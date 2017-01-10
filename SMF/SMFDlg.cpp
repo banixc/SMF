@@ -74,6 +74,11 @@ BEGIN_MESSAGE_MAP(CSMFDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CSMFDlg::OnBnClickedButtonOpen)
+	ON_BN_CLICKED(IDC_BUTTON_CALIBRATE, &CSMFDlg::OnBnClickedButtonCalibrate)
+	ON_BN_CLICKED(IDC_BUTTON_FROM_CAMERA, &CSMFDlg::OnBnClickedButtonFromCamera)
+	ON_BN_CLICKED(IDC_BUTTON_FROM_PIC, &CSMFDlg::OnBnClickedButtonFromPic)
+	ON_BN_CLICKED(IDC_BUTTON_FROM_VIDEO, &CSMFDlg::OnBnClickedButtonFromVideo)
 END_MESSAGE_MAP()
 
 
@@ -109,6 +114,12 @@ BOOL CSMFDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+	op = OpenCVOp();
+
+	bindCVWindow(IDC_STATIC_PIC_L, WIND_L);
+	bindCVWindow(IDC_STATIC_PIC_R, WIND_R);
+	bindCVWindow(IDC_STATIC_PIC_V, WIND_V);
+	initCombox();
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -162,3 +173,87 @@ HCURSOR CSMFDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+bool CSMFDlg::openCamera(bool flag)
+{
+	if (flag) {
+		CString t;
+		m_cSelectL.GetWindowText(t);
+		int idL = _ttoi(t);
+		m_cSelectR.GetWindowText(t);
+		int idR = _ttoi(t);
+		flag = op.openCamera(idL, idR);
+		if (flag) {
+			op.showCamera(true);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	else {
+		op.showCamera(false);
+		return true;
+	}
+}
+
+void CSMFDlg::initCombox()
+{
+	int num = op.countCameras();
+	for (int i = 0; i < num; i++) {
+		CString s;
+		s.Format(L"%d", i);
+		m_cSelectL.AddString(s);
+		m_cSelectR.AddString(s);
+	}
+}
+
+void CSMFDlg::bindCVWindow(int nID, const char * winname)
+{
+	CRect rect;
+	GetDlgItem(nID)->GetClientRect(rect);
+	HWND hWnd = op.bindWindow(winname, rect.Width(), rect.Height());
+	HWND hParent = ::GetParent(hWnd);
+	::SetParent(hWnd, GetDlgItem(nID)->m_hWnd);
+	::ShowWindow(hParent, SW_HIDE);
+}
+
+void CSMFDlg::OnBnClickedButtonOpen()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	if (!openingCamera) {
+		if (openCamera(true)) {
+			openingCamera = true;
+			m_bOpen.SetWindowTextW(TEXT_CLOSE);
+		}
+		else {
+			MessageBox(TEXT_OPEN_FAILED);
+		}
+	} else {
+		openCamera(false);
+		openingCamera = false;
+		m_bOpen.SetWindowTextW(TEXT_OPEN);
+	}
+}
+
+
+void CSMFDlg::OnBnClickedButtonCalibrate()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CSMFDlg::OnBnClickedButtonFromCamera()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CSMFDlg::OnBnClickedButtonFromPic()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CSMFDlg::OnBnClickedButtonFromVideo()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}

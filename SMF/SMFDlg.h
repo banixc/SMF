@@ -4,8 +4,11 @@
 
 #pragma once
 #include "afxwin.h"
+#include "OpenCVOp.h"
 
-
+#define TEXT_OPEN L"打开"
+#define TEXT_CLOSE L"关闭"
+#define TEXT_OPEN_FAILED L"打开摄像头失败，请检查你的设备！"
 // CSMFDlg 对话框
 class CSMFDlg : public CDialogEx
 {
@@ -25,6 +28,8 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
+	OpenCVOp op;
+	bool openingCamera = false;
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -42,4 +47,14 @@ protected:
 	CButton m_bFromCamera;
 	CButton m_bFromPic;
 	CButton m_bFromVideo;
+
+	bool openCamera(bool flag);
+	void initCombox();
+	void bindCVWindow(int nID, const char * winname);
+public:
+	afx_msg void OnBnClickedButtonOpen();
+	afx_msg void OnBnClickedButtonCalibrate();
+	afx_msg void OnBnClickedButtonFromCamera();
+	afx_msg void OnBnClickedButtonFromPic();
+	afx_msg void OnBnClickedButtonFromVideo();
 };
