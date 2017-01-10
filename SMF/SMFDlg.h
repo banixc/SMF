@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "afxwin.h"
 
 
 // CSMFDlg ¶Ô»°¿ò
@@ -31,4 +32,14 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+	CComboBox m_cSelectL;
+	CComboBox m_cSelectR;
+	CEdit m_eGridH;
+	CEdit m_eGridW;
+	CEdit m_eReally;
+	CButton m_bOpen;
+	CButton m_bCalibrate;
+	CButton m_bFromCamera;
+	CButton m_bFromPic;
+	CButton m_bFromVideo;
 };

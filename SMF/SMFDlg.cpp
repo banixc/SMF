@@ -58,6 +58,16 @@ CSMFDlg::CSMFDlg(CWnd* pParent /*=NULL*/)
 void CSMFDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_COMBO_SELECT_L, m_cSelectL);
+	DDX_Control(pDX, IDC_COMBO_SELECT_R, m_cSelectR);
+	DDX_Control(pDX, IDC_EDIT_GRID_H, m_eGridH);
+	DDX_Control(pDX, IDC_EDIT_GRID_W, m_eGridW);
+	DDX_Control(pDX, IDC_EDIT_REALLY, m_eReally);
+	DDX_Control(pDX, IDC_BUTTON_OPEN, m_bOpen);
+	DDX_Control(pDX, IDC_BUTTON_CALIBRATE, m_bCalibrate);
+	DDX_Control(pDX, IDC_BUTTON_FROM_CAMERA, m_bFromCamera);
+	DDX_Control(pDX, IDC_BUTTON_FROM_PIC, m_bFromPic);
+	DDX_Control(pDX, IDC_BUTTON_FROM_VIDEO, m_bFromVideo);
 }
 
 BEGIN_MESSAGE_MAP(CSMFDlg, CDialogEx)
