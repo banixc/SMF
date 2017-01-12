@@ -11,6 +11,10 @@
 #define new DEBUG_NEW
 #endif
 
+static UINT BASED_CODE indicators[] = {
+	IDS_STRING_STATUS,
+	IDS_STRING_STATUS_V
+};
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
@@ -68,6 +72,8 @@ void CSMFDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BUTTON_FROM_CAMERA, m_bFromCamera);
 	DDX_Control(pDX, IDC_BUTTON_FROM_PIC, m_bFromPic);
 	DDX_Control(pDX, IDC_BUTTON_FROM_VIDEO, m_bFromVideo);
+	DDX_Control(pDX, IDC_EDIT_NUM, m_eNum);
+	DDX_Control(pDX, IDC_BUTTON_CUT, m_bCut);
 }
 
 BEGIN_MESSAGE_MAP(CSMFDlg, CDialogEx)
@@ -79,6 +85,7 @@ BEGIN_MESSAGE_MAP(CSMFDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_CAMERA, &CSMFDlg::OnBnClickedButtonFromCamera)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_PIC, &CSMFDlg::OnBnClickedButtonFromPic)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_VIDEO, &CSMFDlg::OnBnClickedButtonFromVideo)
+	ON_BN_CLICKED(IDC_BUTTON_CUT, &CSMFDlg::OnBnClickedButtonCut)
 END_MESSAGE_MAP()
 
 
@@ -112,6 +119,7 @@ BOOL CSMFDlg::OnInitDialog()
 	//  执行此操作
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
+	initStatusBar();
 
 	// TODO: 在此添加额外的初始化代码
 	op = OpenCVOp();
@@ -120,6 +128,7 @@ BOOL CSMFDlg::OnInitDialog()
 	bindCVWindow(IDC_STATIC_PIC_R, WIND_R);
 	bindCVWindow(IDC_STATIC_PIC_V, WIND_V);
 	initCombox();
+	op.showBlack(PL|PR|PV);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -206,6 +215,18 @@ void CSMFDlg::initCombox()
 	}
 }
 
+void CSMFDlg::initStatusBar()
+{
+	m_bar.Create(this);
+	m_bar.SetIndicators(indicators, 2);
+	CRect rect;
+	GetClientRect(&rect);
+	m_bar.SetPaneInfo(0, IDS_STRING_STATUS, SBPS_NORMAL, rect.Width() - 100);
+	m_bar.SetPaneInfo(1, IDS_STRING_STATUS_V, SBPS_STRETCH, 0);
+	m_bar.GetStatusBarCtrl().SetBkColor(RGB(180, 180, 180));
+	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, AFX_IDW_CONTROLBAR_FIRST);
+}
+
 void CSMFDlg::bindCVWindow(int nID, const char * winname)
 {
 	CRect rect;
@@ -216,6 +237,23 @@ void CSMFDlg::bindCVWindow(int nID, const char * winname)
 	::ShowWindow(hParent, SW_HIDE);
 }
 
+bool CSMFDlg::validParam()
+{
+	int w = getInt(IDC_EDIT_GRID_W);
+	int h = getInt(IDC_EDIT_GRID_H);
+	int num = getInt(IDC_EDIT_NUM);
+	int size = getInt(IDC_EDIT_RELALLY);
+	op.initCalibrateParam(w, h, size, num);
+	return w > 0 && h > 0 && num > 0 && size >0;
+}
+
+int CSMFDlg::getInt(int nID)
+{
+	CString t;
+	GetDlgItem(nID)->GetWindowText(t);
+	return _ttoi(t);
+}
+
 void CSMFDlg::OnBnClickedButtonOpen()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -223,9 +261,15 @@ void CSMFDlg::OnBnClickedButtonOpen()
 		if (openCamera(true)) {
 			openingCamera = true;
 			m_bOpen.SetWindowTextW(TEXT_CLOSE);
+			m_eGridH.EnableWindow(true);
+			m_eGridW.EnableWindow(true);
+			m_eReally.EnableWindow(true);
+			m_eNum.EnableWindow(true);
+			m_bFromCamera.EnableWindow(true);
+			m_bar.SetPaneText(0, L"打开摄像头成功！");
 		}
 		else {
-			MessageBox(TEXT_OPEN_FAILED);
+			m_bar.SetPaneText(0, L"打开摄像头失败！");
 		}
 	} else {
 		openCamera(false);
@@ -244,6 +288,13 @@ void CSMFDlg::OnBnClickedButtonCalibrate()
 void CSMFDlg::OnBnClickedButtonFromCamera()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	if (!validParam())
+		m_bar.SetPaneText(0, L"参数不正确！");
+	else {
+		m_bar.SetPaneText(0, L"初始化完成！");
+		m_bFromCamera.EnableWindow(false);
+		m_bCut.EnableWindow(true);
+	}
 }
 
 
@@ -256,4 +307,22 @@ void CSMFDlg::OnBnClickedButtonFromPic()
 void CSMFDlg::OnBnClickedButtonFromVideo()
 {
 	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CSMFDlg::OnBnClickedButtonCut()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	m_bar.SetPaneText(0, L"正在截取...");
+	CString s;
+	s.Format(L"%d/%d", op.frameCount, op.imgNumber);
+	m_bar.SetPaneText(1, s);
+	if (op.cutPic()) {
+		m_bar.SetPaneText(0, L"截取成功");
+		s.Format(L"%d/%d", op.frameCount, op.imgNumber);
+		m_bar.SetPaneText(1, s);
+	}
+	else {
+		m_bar.SetPaneText(0, L"截取失败");
+	}
 }

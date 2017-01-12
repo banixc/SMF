@@ -47,14 +47,22 @@ protected:
 	CButton m_bFromCamera;
 	CButton m_bFromPic;
 	CButton m_bFromVideo;
+	CStatusBar m_bar;
 
 	bool openCamera(bool flag);
 	void initCombox();
+	void initStatusBar();
 	void bindCVWindow(int nID, const char * winname);
+	bool validParam();	
+	int getInt(int nID);
 public:
 	afx_msg void OnBnClickedButtonOpen();
 	afx_msg void OnBnClickedButtonCalibrate();
 	afx_msg void OnBnClickedButtonFromCamera();
 	afx_msg void OnBnClickedButtonFromPic();
 	afx_msg void OnBnClickedButtonFromVideo();
+	afx_msg void OnBnClickedButtonCut();
+protected:
+	CEdit m_eNum;
+	CButton m_bCut;
 };

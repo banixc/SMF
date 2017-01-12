@@ -54,3 +54,7 @@
 #define WIND_L "VIDEO_L"
 #define WIND_R "VIDEO_R"
 #define WIND_V "VIDEO_V"
+
+#define PL 0b1
+#define PR 0b10
+#define PV 0b100
