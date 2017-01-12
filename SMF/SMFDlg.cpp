@@ -267,6 +267,9 @@ void CSMFDlg::OnBnClickedButtonOpen()
 			m_eNum.EnableWindow(true);
 			m_bFromCamera.EnableWindow(true);
 			m_bar.SetPaneText(0, L"打开摄像头成功！");
+			if (op.loadCameraParam()) {
+				m_bar.SetPaneText(0, L"打开摄像头成功！已从文件中加载标定参数！");
+			}
 		}
 		else {
 			m_bar.SetPaneText(0, L"打开摄像头失败！");

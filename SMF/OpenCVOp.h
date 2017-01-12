@@ -19,10 +19,10 @@ public:
 	int idL, idR;
 	VideoCapture captureL, captureR;
 	Mat frameL, frameR, frameV;
-	Size resizeL, resizeR, resizeV;
+	Size resizeL, resizeR, resizeV, imgSize;
 	Mat intrinsicL, distortion_coeffL, intrinsicR, distortion_coeffR;
 	Mat cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR;
-	Mat R, T, E, F, Q, Rl, Rr, Pl, Pr;
+	Mat R, T, E, F, Q, Rl, Rr, Pl, Pr, XYZ;
 	Rect validROIL, validROIR, validROI;
 	vector<Mat> rvecsL, tvecsL, rvecsR, tvecsR;
 	Mat mapLx, mapLy, mapRx, mapRy;
@@ -30,6 +30,7 @@ public:
 	Size boardSize;
 	vector<vector<Point2f>> cornersL, cornersR;
 
+	Ptr<StereoBM> sbm;
 
 	int frameCount;
 	int countCameras();
@@ -46,6 +47,7 @@ public:
 	void culRemap();
 	bool loadCameraParam();
 	bool outPutCameraParam();
+	bool getPointClouds(cv::Mat & disparity, cv::Mat & pointClouds);
 	HWND bindWindow(const char * winname, int width, int height);
 
 

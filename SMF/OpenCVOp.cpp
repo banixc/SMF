@@ -13,21 +13,20 @@ void OpenCVOp::show(int flag)
 
 	if (PL == (flag & PL) && !frameL.empty()) {
 		if (isRectify) {
-
-			Rect vroiL(cvRound(validROIL.x*sf), cvRound(validROIL.y*sf),					//获得被截取的区域	
+			//remap(frameL, frameL, mapLx, mapLy, INTER_LINEAR);
+			/*Rect vroiL(cvRound(validROIL.x*sf), cvRound(validROIL.y*sf),					
 				cvRound(validROIL.width*sf), cvRound(validROIL.height*sf));
-			remap(frameL, frameL, mapLx, mapLy, INTER_LINEAR);
-			rectangle(resized, vroiL, Scalar(0, 0, 255), 3, 8);
+			rectangle(resized, vroiL, Scalar(0, 0, 255), 3, 8);*/
 		}
 		resize(frameL, resized, resizeL);
 		imshow(WIND_L, resized);
 	} 
 	if (PR == (flag & PR) && !frameR.empty()) {
 		if (isRectify) {
-			Rect vroiR(cvRound(validROIR.x*sf), cvRound(validROIR.y*sf),					//获得被截取的区域	
+			//remap(frameR, frameR, mapRx, mapRy, INTER_LINEAR);
+			/*Rect vroiR(cvRound(validROIR.x*sf), cvRound(validROIR.y*sf),				
 				cvRound(validROIR.width*sf), cvRound(validROIR.height*sf));
-			remap(frameR, frameR, mapRx, mapRy, INTER_LINEAR);
-			rectangle(resized, vroiR, Scalar(0, 0, 255), 3, 8);
+			rectangle(resized, vroiR, Scalar(0, 0, 255), 3, 8);*/
 		}
 		resize(frameR, resized, resizeR);
 		imshow(WIND_R, resized);
@@ -59,6 +58,7 @@ OpenCVOp::OpenCVOp()
 	captureR = VideoCapture();
 	black = Mat(2, 2, CV_8UC3, Scalar(0, 0, 255));
 	isRectify = false;
+	sbm = StereoBM::create(16 * 5, 31);
 }
 
 OpenCVOp::~OpenCVOp()
@@ -87,6 +87,8 @@ bool OpenCVOp::openCamera(int l, int r)
 	idR = r;
 	captureL.open(idL);
 	captureR.open(idR);
+	if (captureL.isOpened())
+		imgSize = Size(captureL.get(CV_CAP_PROP_FRAME_HEIGHT), captureL.get(CV_CAP_PROP_FRAME_WIDTH));
 	return captureL.isOpened() && captureR.isOpened();
 }
 
@@ -134,6 +136,7 @@ bool OpenCVOp::startCalibrate()
 	rectify();
 	//计算映射矩阵
 	culRemap();
+	outPutCameraParam();
 }
 
 void OpenCVOp::calRealPoint(vector<vector<Point3f>>& obj)
@@ -177,8 +180,8 @@ void OpenCVOp::calibrate()
 	vector<vector<Point3f>> objL,objR;
 	calRealPoint(objL);
 	calRealPoint(objR);
-	calibrateCamera(objL, cornersL, resizeL, intrinsicL, distortion_coeffL, rvecsL, tvecsL, 0);
-	calibrateCamera(objR, cornersR, resizeR, intrinsicR, distortion_coeffR, rvecsR, tvecsR, 0);
+	calibrateCamera(objL, cornersL, imgSize, intrinsicL, distortion_coeffL, rvecsL, tvecsL, 0);
+	calibrateCamera(objR, cornersR, imgSize, intrinsicR, distortion_coeffR, rvecsR, tvecsR, 0);
 }
 
 double OpenCVOp::calibrateStereo()
@@ -188,30 +191,30 @@ double OpenCVOp::calibrateStereo()
 	return stereoCalibrate(obj, cornersL, cornersR,
 		cameraMatrixL, distCoeffL,
 		cameraMatrixR, distCoeffR,
-		resizeL, R, T, E, F,
+		imgSize, R, T, E, F,
 		CALIB_USE_INTRINSIC_GUESS,
 		TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 100, 1e-5));
 }
 
 void OpenCVOp::rectify()
 {
-	stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, resizeL, R, T, Rl, Rr, Pl, Pr, Q,
-		CALIB_ZERO_DISPARITY, 0, resizeL, &validROIL, &validROIR);
+	stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imgSize, R, T, Rl, Rr, Pl, Pr, Q,
+		CALIB_ZERO_DISPARITY, 0, imgSize, &validROIL, &validROIR);
 }
 
 void OpenCVOp::culRemap()
 {
-	mapLx = Mat(resizeL, CV_32FC1);
-	mapLy = Mat(resizeL, CV_32FC1);
-	mapRx = Mat(resizeL, CV_32FC1);
-	mapRy = Mat(resizeL, CV_32FC1);
-	initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pl, resizeL, CV_32FC1, mapLx, mapLy);
-	initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, resizeL, CV_32FC1, mapRx, mapRy);
+	mapLx = Mat(imgSize, CV_32FC1);
+	mapLy = Mat(imgSize, CV_32FC1);
+	mapRx = Mat(imgSize, CV_32FC1);
+	mapRy = Mat(imgSize, CV_32FC1);
+	initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pl, imgSize, CV_32FC1, mapLx, mapLy);
+	initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imgSize, CV_32FC1, mapRx, mapRy);
 	isRectify = true;
 }
 
 bool OpenCVOp::loadCameraParam() {
-	FileStorage fs("CameraID.yml", FileStorage::READ);
+	FileStorage fs("CameraParams.yml", FileStorage::READ);
 	if (!fs.isOpened())
 		return false;
 
@@ -233,6 +236,7 @@ bool OpenCVOp::loadCameraParam() {
 
 	fs.release();
 	isRectify = true;
+	showVision(true);
 	return true;
 }
 
@@ -244,6 +248,29 @@ bool OpenCVOp::outPutCameraParam() {
 	fs << "R" << R << "T" << T << "Rl" << Rl << "Rr" << Rr << "Pl" << Pl << "Pr" << Pr << "Q" << Q;
 	fs << "mapLx" << mapLx << "mapLy" << mapLy << "mapRx" << mapRx << "mapRy" << mapRy;
 	fs.release();
+	return true;
+}
+
+bool OpenCVOp::getPointClouds(cv::Mat& disparity, cv::Mat& pointClouds)
+{
+	if (disparity.empty())
+	{
+		return false;
+	}
+
+	reprojectImageTo3D(disparity, pointClouds, Q, true);
+
+	pointClouds *= 1.6;
+
+	for (int y = 0; y < pointClouds.rows; ++y)
+	{
+		for (int x = 0; x < pointClouds.cols; ++x)
+		{
+			cv::Point3f point = pointClouds.at<cv::Point3f>(y, x);
+			point.y = -point.y;
+			pointClouds.at<cv::Point3f>(y, x) = point;
+		}
+	}
 	return true;
 }
 
@@ -280,7 +307,23 @@ DWORD OpenCVOp::ShowVisionThread(void * pArg)
 {
 	OpenCVOp* t = (OpenCVOp*)pArg;
 	while (true) {
+		Mat imgL, imgR, Mask;
+		cvtColor(t->frameL, imgL, CV_BGR2GRAY);
+		cvtColor(t->frameR, imgR, CV_BGR2GRAY);
 
+		Mat imgDisparity16S = Mat(imgL.rows, imgL.cols, CV_16S);
+		Mat imgDisparity8U = Mat(imgL.rows, imgL.cols, CV_8UC1);
+
+		t->sbm->compute(imgL, imgR, imgDisparity16S);
+
+		imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255.0 / 1000.0);
+		compare(imgDisparity16S, 0, Mask, CMP_GE);
+		applyColorMap(imgDisparity8U, imgDisparity8U, COLORMAP_HSV);
+		Mat disparityShow;
+		imgDisparity8U.copyTo(disparityShow, Mask);
+		imshow(WIND_V, disparityShow);
+		t->getPointClouds(imgDisparity16S, t->XYZ);
+		//setMouseCallback("BM算法视差图", on_mouse, 0);
 	}
 	return 0;
 }
