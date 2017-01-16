@@ -50,11 +50,3 @@
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
 #endif
-
-#define WIND_L "VIDEO_L"
-#define WIND_R "VIDEO_R"
-#define WIND_V "VIDEO_V"
-
-#define PL 0b1
-#define PR 0b10
-#define PV 0b100
