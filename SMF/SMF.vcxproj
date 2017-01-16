@@ -188,6 +188,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CvvImage.h" />
     <ClInclude Include="OpenCVOp.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SMF.h" />
@@ -196,6 +197,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CvvImage.cpp" />
     <ClCompile Include="OpenCVOp.cpp" />
     <ClCompile Include="SMF.cpp" />
     <ClCompile Include="SMFDlg.cpp" />

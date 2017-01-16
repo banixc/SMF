@@ -7,27 +7,26 @@ using namespace std;
 class OpenCVOp
 {
 protected:
-	HANDLE hThreadCamera;
-	HANDLE hThreadVision;
-	Mat black;
-	bool isRectify;
+
 
 public:
+	bool isRectify;
+
 	OpenCVOp();
 	~OpenCVOp();
 
 	int idL, idR;
+	int boardWidth, boardHeight, imgNumber, squareSize;
+
 	VideoCapture captureL, captureR;
 	Mat frameL, frameR, frameV;
-	Size resizeL, resizeR, resizeV, imgSize;
+	Size resizeL, resizeR, resizeV, imgSize, boardSize;
 	Mat intrinsicL, distortion_coeffL, intrinsicR, distortion_coeffR;
 	Mat cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR;
 	Mat R, T, E, F, Q, Rl, Rr, Pl, Pr, XYZ;
+	Mat mapLx, mapLy, mapRx, mapRy;
 	Rect validROIL, validROIR, validROI;
 	vector<Mat> rvecsL, tvecsL, rvecsR, tvecsR;
-	Mat mapLx, mapLy, mapRx, mapRy;
-	int boardWidth, boardHeight, imgNumber, squareSize;
-	Size boardSize;
 	vector<vector<Point2f>> cornersL, cornersR;
 
 	Ptr<StereoBM> sbm;
@@ -35,8 +34,8 @@ public:
 	int frameCount;
 	int countCameras();
 	bool openCamera(int l, int r);
-	void showCamera(bool flag);
-	void showVision(bool flag);
+	void closeCamera();
+	void nextFrame();
 	void initCalibrateParam(int w, int h, int size, int number);
 	bool startCalibrate();
 	void calRealPoint(vector<vector<Point3f>>& obj);
@@ -48,13 +47,7 @@ public:
 	bool loadCameraParam();
 	bool outPutCameraParam();
 	bool getPointClouds(cv::Mat & disparity, cv::Mat & pointClouds);
-	HWND bindWindow(const char * winname, int width, int height);
+	double getDistance(int x, int y);
 
-
-	void show(int flag);
-	void showBlack(int flag);
-
-	static DWORD WINAPI ShowCameraThread(void *pArg);	//显示摄像机
-	static DWORD WINAPI ShowVisionThread(void *pArg);	//显示视差图
 };
 

@@ -6,10 +6,15 @@
 #include "SMF.h"
 #include "SMFDlg.h"
 #include "afxdialogex.h"
+#include "Cvvimage.h"
+#include "opencv2/opencv.hpp"
+#include "opencv2/highgui/highgui.hpp"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+#define ID_TIMER_LOOP_LRV 10
 
 static UINT BASED_CODE indicators[] = {
 	IDS_STRING_STATUS,
@@ -86,6 +91,9 @@ BEGIN_MESSAGE_MAP(CSMFDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_PIC, &CSMFDlg::OnBnClickedButtonFromPic)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_VIDEO, &CSMFDlg::OnBnClickedButtonFromVideo)
 	ON_BN_CLICKED(IDC_BUTTON_CUT, &CSMFDlg::OnBnClickedButtonCut)
+	ON_WM_LBUTTONDOWN()
+
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -124,11 +132,7 @@ BOOL CSMFDlg::OnInitDialog()
 	// TODO: 在此添加额外的初始化代码
 	op = OpenCVOp();
 
-	bindCVWindow(IDC_STATIC_PIC_L, WIND_L);
-	bindCVWindow(IDC_STATIC_PIC_R, WIND_R);
-	bindCVWindow(IDC_STATIC_PIC_V, WIND_V);
 	initCombox();
-	op.showBlack(PL|PR|PV);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -182,28 +186,6 @@ HCURSOR CSMFDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-bool CSMFDlg::openCamera(bool flag)
-{
-	if (flag) {
-		CString t;
-		m_cSelectL.GetWindowText(t);
-		int idL = _ttoi(t);
-		m_cSelectR.GetWindowText(t);
-		int idR = _ttoi(t);
-		flag = op.openCamera(idL, idR);
-		if (flag) {
-			op.showCamera(true);
-			return true;
-		} else {
-			return false;
-		}
-	}
-	else {
-		op.showCamera(false);
-		return true;
-	}
-}
-
 void CSMFDlg::initCombox()
 {
 	int num = op.countCameras();
@@ -227,16 +209,6 @@ void CSMFDlg::initStatusBar()
 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, AFX_IDW_CONTROLBAR_FIRST);
 }
 
-void CSMFDlg::bindCVWindow(int nID, const char * winname)
-{
-	CRect rect;
-	GetDlgItem(nID)->GetClientRect(rect);
-	HWND hWnd = op.bindWindow(winname, rect.Width(), rect.Height());
-	HWND hParent = ::GetParent(hWnd);
-	::SetParent(hWnd, GetDlgItem(nID)->m_hWnd);
-	::ShowWindow(hParent, SW_HIDE);
-}
-
 bool CSMFDlg::validParam()
 {
 	int w = getInt(IDC_EDIT_GRID_W);
@@ -254,30 +226,40 @@ int CSMFDlg::getInt(int nID)
 	return _ttoi(t);
 }
 
+void CSMFDlg::showNextFrame()
+{
+	if (!op.frameL.empty())
+		ShowMat(op.frameL, IDC_STATIC_PIC_L);
+	if (!op.frameR.empty())
+		ShowMat(op.frameR, IDC_STATIC_PIC_R);
+	if (!op.frameV.empty())
+		ShowMat(op.frameV, IDC_STATIC_PIC_V);
+}
+
 void CSMFDlg::OnBnClickedButtonOpen()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	if (!openingCamera) {
-		if (openCamera(true)) {
-			openingCamera = true;
-			m_bOpen.SetWindowTextW(TEXT_CLOSE);
-			m_eGridH.EnableWindow(true);
-			m_eGridW.EnableWindow(true);
-			m_eReally.EnableWindow(true);
-			m_eNum.EnableWindow(true);
-			m_bFromCamera.EnableWindow(true);
-			m_bar.SetPaneText(0, L"打开摄像头成功！");
-			if (op.loadCameraParam()) {
-				m_bar.SetPaneText(0, L"打开摄像头成功！已从文件中加载标定参数！");
-			}
+	if (op.openCamera(getInt(IDC_COMBO_SELECT_L), getInt(IDC_COMBO_SELECT_R))) {
+		openingCamera = true;
+		m_bOpen.EnableWindow(false);
+		m_cSelectL.EnableWindow(false);
+		m_cSelectR.EnableWindow(false);
+
+		m_eGridH.EnableWindow(true);
+		m_eGridW.EnableWindow(true);
+		m_eReally.EnableWindow(true);
+		m_eNum.EnableWindow(true);
+		m_bFromCamera.EnableWindow(true);
+		m_bar.SetPaneText(0, L"打开摄像头成功！");
+		if (op.loadCameraParam()) {
+			m_bar.SetPaneText(0, L"打开摄像头成功！已从文件中加载标定参数！");
 		}
-		else {
-			m_bar.SetPaneText(0, L"打开摄像头失败！");
-		}
-	} else {
-		openCamera(false);
-		openingCamera = false;
-		m_bOpen.SetWindowTextW(TEXT_OPEN);
+
+		SetTimer(ID_TIMER_LOOP_LRV, 10, NULL);
+
+	}
+	else {
+		m_bar.SetPaneText(0, L"打开摄像头失败！");
 	}
 }
 
@@ -327,5 +309,60 @@ void CSMFDlg::OnBnClickedButtonCut()
 	}
 	else {
 		m_bar.SetPaneText(0, L"截取失败");
+	}
+}
+
+
+
+
+void CSMFDlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	convertPoint(point);
+	CString s;
+	s.Format(L"%d,%d", point.x,point.y);
+	m_bar.SetPaneText(1, s);
+	CDialogEx::OnLButtonDown(nFlags, point);
+}
+
+void CSMFDlg::ShowMat(cv::Mat& image, int IDC)
+{
+	CDC* pDC = GetDlgItem(IDC)->GetDC();			//根据ID获得窗口指针再获取与该窗口关联的上下文指针  
+	HDC hDC = pDC->GetSafeHdc();					// 获取设备上下文句柄  
+	CRect rect;
+	GetDlgItem(IDC)->GetClientRect(&rect);			//获取显示区  
+	CvvImage cimg;
+	IplImage ipl_img(image);
+	cimg.CopyOf(&ipl_img);							// 复制图片
+	cimg.DrawToHDC(hDC, &rect);						// 将图片绘制到显示控件的指定区域内
+	ReleaseDC(pDC);
+
+}
+
+void CSMFDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	switch (nIDEvent) {
+		case ID_TIMER_LOOP_LRV:
+			op.nextFrame();
+			showNextFrame();
+			break;
+	}
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+void CSMFDlg::convertPoint(CPoint& p) {
+	CRect rect;
+	GetDlgItem(IDC_STATIC_PIC_V)->GetWindowRect(&rect);			//获取显示区  
+	ScreenToClient(&rect);
+	if(PtInRect(&rect, p)) {
+		p.x -= rect.left;
+		p.y -= rect.top;
+		p.x = p.x * op.imgSize.width / rect.Width();
+		p.y = p.y * op.imgSize.height / rect.Height();
+	}
+	else {
+		p.x = -1;
+		p.y = -1;
 	}
 }

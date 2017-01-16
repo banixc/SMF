@@ -4,59 +4,11 @@
 using namespace cv;
 using namespace std;
 
-void OpenCVOp::show(int flag)
-{
-	Mat resized;
-	double sf;
-	int w, h;
-	sf = 640. / MAX(resizeL.width, resizeR.height);
-
-	if (PL == (flag & PL) && !frameL.empty()) {
-		if (isRectify) {
-			//remap(frameL, frameL, mapLx, mapLy, INTER_LINEAR);
-			/*Rect vroiL(cvRound(validROIL.x*sf), cvRound(validROIL.y*sf),					
-				cvRound(validROIL.width*sf), cvRound(validROIL.height*sf));
-			rectangle(resized, vroiL, Scalar(0, 0, 255), 3, 8);*/
-		}
-		resize(frameL, resized, resizeL);
-		imshow(WIND_L, resized);
-	} 
-	if (PR == (flag & PR) && !frameR.empty()) {
-		if (isRectify) {
-			//remap(frameR, frameR, mapRx, mapRy, INTER_LINEAR);
-			/*Rect vroiR(cvRound(validROIR.x*sf), cvRound(validROIR.y*sf),				
-				cvRound(validROIR.width*sf), cvRound(validROIR.height*sf));
-			rectangle(resized, vroiR, Scalar(0, 0, 255), 3, 8);*/
-		}
-		resize(frameR, resized, resizeR);
-		imshow(WIND_R, resized);
-	}
-	if (PV == (flag & PV) && !frameV.empty()) {
-		resize(frameV, resized, resizeV);
-		imshow(WIND_V, resized);
-	}
-}
-
-void OpenCVOp::showBlack(int flag)
-{
-	Mat black;
-	if (PL == (flag & PL)) {
-		black.copyTo(frameL);
-	}
-	if (PR == (flag & PR)) {
-		black.copyTo(frameR);
-	}
-	if (PV == (flag & PV)) {
-		black.copyTo(frameV);
-	}
-	show(flag);
-}
-
 OpenCVOp::OpenCVOp()
 {
 	captureL = VideoCapture();
 	captureR = VideoCapture();
-	black = Mat(2, 2, CV_8UC3, Scalar(0, 0, 255));
+	//black = Mat(2, 2, CV_8UC3, Scalar(0, 0, 255));
 	isRectify = false;
 	sbm = StereoBM::create(16 * 5, 31);
 }
@@ -86,31 +38,61 @@ bool OpenCVOp::openCamera(int l, int r)
 	idL = l;
 	idR = r;
 	captureL.open(idL);
+	captureL.set(CV_CAP_PROP_FRAME_WIDTH, 1280);
+	captureL.set(CV_CAP_PROP_FRAME_HEIGHT, 720);
 	captureR.open(idR);
+	captureR.set(CV_CAP_PROP_FRAME_WIDTH, 1280);
+	captureR.set(CV_CAP_PROP_FRAME_HEIGHT, 720);
 	if (captureL.isOpened())
-		imgSize = Size(captureL.get(CV_CAP_PROP_FRAME_HEIGHT), captureL.get(CV_CAP_PROP_FRAME_WIDTH));
+		imgSize = Size(1280, 720);
 	return captureL.isOpened() && captureR.isOpened();
 }
 
-void OpenCVOp::showCamera(bool flag)
+void OpenCVOp::closeCamera()
 {
-	if (flag) {
-		hThreadCamera = CreateThread(NULL, 0, ShowCameraThread, (LPVOID*)this, NULL, 0);
-	}
-	else {
-		CloseHandle(hThreadCamera);
-		captureL.release();
-		captureR.release();
-	}
+	captureL.release();
+	captureR.release();
 }
 
-void OpenCVOp::showVision(bool flag)
+void OpenCVOp::nextFrame()
 {
-	if (flag) {
-		hThreadVision = CreateThread(NULL, 0, ShowVisionThread, (LPVOID*)this, NULL, 0);
+
+	bool openedL = captureL.isOpened();
+	bool openedR = captureR.isOpened();
+
+	if (openedL) {
+		captureL >> frameL;
+		if (isRectify) {
+			remap(frameL, frameL, mapLx, mapLy, INTER_LINEAR);
+			//rectangle(frameL, validROIL, Scalar(0, 0, 255), 3, 8);
+		}
 	}
-	else {
-		CloseHandle(hThreadVision);
+	if (openedR) {
+		captureR >> frameR;
+		if (isRectify) {
+			remap(frameR, frameR, mapRx, mapRy, INTER_LINEAR);
+			//rectangle(frameL, validROIL, Scalar(0, 255, 0), 3, 8);
+		}
+	}
+
+	if (openedL && openedR && isRectify) {
+		Mat imgL, imgR, Mask;
+		cvtColor(frameL, imgL, CV_BGR2GRAY);
+		cvtColor(frameR, imgR, CV_BGR2GRAY);
+
+		Mat imgDisparity16S = Mat(imgL.rows, imgL.cols, CV_16S);
+		Mat imgDisparity8U = Mat(imgL.rows, imgL.cols, CV_8UC1);
+
+		sbm->compute(imgL, imgR, imgDisparity16S);
+
+		imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255.0 / 1000.0);
+		compare(imgDisparity16S, 0, Mask, CMP_GE);
+		applyColorMap(imgDisparity8U, imgDisparity8U, COLORMAP_HSV);
+		frameV = Mat();
+		imgDisparity8U.copyTo(frameV, Mask);
+		//imshow(WIND_V, disparityShow);
+		rectangle(frameV, validROI, Scalar(255, 0, 0), 3, 8);
+		getPointClouds(imgDisparity16S, XYZ);
 	}
 }
 
@@ -137,6 +119,7 @@ bool OpenCVOp::startCalibrate()
 	//计算映射矩阵
 	culRemap();
 	outPutCameraParam();
+	return true;
 }
 
 void OpenCVOp::calRealPoint(vector<vector<Point3f>>& obj)
@@ -229,6 +212,9 @@ bool OpenCVOp::loadCameraParam() {
 	fs["Pl"] >> Pl;
 	fs["Pr"] >> Pr;
 	fs["Q"] >> Q;
+	fs["validROIL"] >> validROIL;
+	fs["validROIR"] >> validROIR;
+	fs["validROI"] >> validROI;
 	fs["mapLx"] >> mapLx;
 	fs["mapLy"] >> mapLy;
 	fs["mapRx"] >> mapRx;
@@ -236,7 +222,7 @@ bool OpenCVOp::loadCameraParam() {
 
 	fs.release();
 	isRectify = true;
-	showVision(true);
+	//showVision(true);
 	return true;
 }
 
@@ -246,14 +232,17 @@ bool OpenCVOp::outPutCameraParam() {
 		return false;
 	fs << "cameraMatrixL" << cameraMatrixL << "cameraDistcoeffL" << distCoeffL << "cameraMatrixR" << cameraMatrixR << "cameraDistcoeffR" << distCoeffR;
 	fs << "R" << R << "T" << T << "Rl" << Rl << "Rr" << Rr << "Pl" << Pl << "Pr" << Pr << "Q" << Q;
+	fs << "validROIL" << validROIL << "validROIR" << validROIR << "validROI" << validROI;
 	fs << "mapLx" << mapLx << "mapLy" << mapLy << "mapRx" << mapRx << "mapRy" << mapRy;
 	fs.release();
 	return true;
 }
 
+
+
 bool OpenCVOp::getPointClouds(cv::Mat& disparity, cv::Mat& pointClouds)
 {
-	if (disparity.empty())
+	if (disparity.empty() || pointClouds.empty())
 	{
 		return false;
 	}
@@ -274,56 +263,26 @@ bool OpenCVOp::getPointClouds(cv::Mat& disparity, cv::Mat& pointClouds)
 	return true;
 }
 
-
-
-HWND OpenCVOp::bindWindow(const char * winname, int width, int height)
+double OpenCVOp::getDistance(int x, int y)
 {
-	namedWindow(winname);
-	resizeWindow(winname, width, height);
-	if (winname == WIND_L) {
-		resizeL = Size(width, height);
-	} 
-	else if (winname == WIND_R) {
-		resizeR = Size(width, height);
+	if (XYZ.empty())
+	{
+		return -1;
 	}
-	else if (winname == WIND_V) {
-		resizeV = Size(width, height);
-	}
-	return (HWND)cvGetWindowHandle(winname);
+
+	// 提取深度图像
+	vector<cv::Mat> xyzSet;
+	split(XYZ, xyzSet);
+	cv::Mat depth;
+	xyzSet[2].copyTo(depth);
+
+	// 根据深度阈值进行二值化处理
+	double maxVal = 0, minVal = 0;
+	cv::Mat depthThresh = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
+	cv::minMaxLoc(depth, &minVal, &maxVal);
+	double thrVal = minVal * 1.5;
+	threshold(depth, depthThresh, thrVal, 255, CV_THRESH_BINARY_INV);
+	depthThresh.convertTo(depthThresh, CV_8UC1);
+	return depth.at<float>(x, y) /2 ;
 }
 
-DWORD OpenCVOp::ShowCameraThread(void * pArg)
-{
-	OpenCVOp* t = (OpenCVOp*)pArg;
-	while (true) {
-		t->captureL >> t->frameL;
-		t->captureR >> t->frameR;
-		t->show(PL|PR);
-	}
-	return 0;
-}
-
-DWORD OpenCVOp::ShowVisionThread(void * pArg)
-{
-	OpenCVOp* t = (OpenCVOp*)pArg;
-	while (true) {
-		Mat imgL, imgR, Mask;
-		cvtColor(t->frameL, imgL, CV_BGR2GRAY);
-		cvtColor(t->frameR, imgR, CV_BGR2GRAY);
-
-		Mat imgDisparity16S = Mat(imgL.rows, imgL.cols, CV_16S);
-		Mat imgDisparity8U = Mat(imgL.rows, imgL.cols, CV_8UC1);
-
-		t->sbm->compute(imgL, imgR, imgDisparity16S);
-
-		imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255.0 / 1000.0);
-		compare(imgDisparity16S, 0, Mask, CMP_GE);
-		applyColorMap(imgDisparity8U, imgDisparity8U, COLORMAP_HSV);
-		Mat disparityShow;
-		imgDisparity8U.copyTo(disparityShow, Mask);
-		imshow(WIND_V, disparityShow);
-		t->getPointClouds(imgDisparity16S, t->XYZ);
-		//setMouseCallback("BM算法视差图", on_mouse, 0);
-	}
-	return 0;
-}
