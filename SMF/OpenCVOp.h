@@ -48,6 +48,6 @@ public:
 	bool outPutCameraParam();
 	bool getPointClouds(cv::Mat & disparity, cv::Mat & pointClouds);
 	double getDistance(int x, int y);
-
+	bool calibrateFromPic(vector<string>& fileNameListL, vector<string>& fileNameListR);
 };
 

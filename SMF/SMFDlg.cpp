@@ -250,6 +250,7 @@ void CSMFDlg::OnBnClickedButtonOpen()
 		m_eReally.EnableWindow(true);
 		m_eNum.EnableWindow(true);
 		m_bFromCamera.EnableWindow(true);
+		m_bFromPic.EnableWindow(true);
 		m_bar.SetPaneText(0, L"打开摄像头成功！");
 		if (op.loadCameraParam()) {
 			m_bar.SetPaneText(0, L"打开摄像头成功！已从文件中加载标定参数！");
@@ -286,6 +287,36 @@ void CSMFDlg::OnBnClickedButtonFromCamera()
 void CSMFDlg::OnBnClickedButtonFromPic()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	TCHAR szFilter[] = _T("图片|*.jpg|所有文件|*.*||");
+	vector<string> fileNameListL, fileNameListR;
+	CFileDialog fileDlgL(TRUE, NULL, NULL, OFN_FILEMUSTEXIST|OFN_ALLOWMULTISELECT, NULL, this);
+	if (fileDlgL.DoModal() == IDOK) {
+		POSITION pos;
+		pos = fileDlgL.GetStartPosition();//开始遍历用户选择文件列表  
+		while (pos != NULL)
+		{
+			CString filename = fileDlgL.GetNextPathName(pos);
+			//m_ctlList.AddString(filename);//将文件名添加到列表框  
+			USES_CONVERSION;
+			string tmpstr(W2A(filename));
+			fileNameListL.push_back(tmpstr);
+		}
+	}
+
+	CFileDialog fileDlgR(TRUE, NULL, NULL, OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT, NULL, this);
+	if (fileDlgR.DoModal() == IDOK) {
+		POSITION pos;
+		pos = fileDlgR.GetStartPosition();//开始遍历用户选择文件列表  
+		while (pos != NULL)
+		{
+			CString filename = fileDlgR.GetNextPathName(pos);
+			USES_CONVERSION;
+			string tmpstr(W2A(filename));
+			fileNameListR.push_back(tmpstr);
+		}
+	}
+
+	return;
 }
 
 
@@ -319,8 +350,11 @@ void CSMFDlg::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	convertPoint(point);
+	if (point.x == -1 && point.y == -1)
+		return;
+	double d = op.getDistance(point.x, point.y);
 	CString s;
-	s.Format(L"%d,%d", point.x,point.y);
+	s.Format(L"距离：%d", d);
 	m_bar.SetPaneText(1, s);
 	CDialogEx::OnLButtonDown(nFlags, point);
 }

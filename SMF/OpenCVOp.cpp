@@ -286,3 +286,40 @@ double OpenCVOp::getDistance(int x, int y)
 	return depth.at<float>(x, y) /2 ;
 }
 
+bool OpenCVOp::calibrateFromPic(vector<string>& fileNameListL, vector<string>& fileNameListR)
+{
+	if(fileNameListL.size() < imgNumber || fileNameListR.size() < imgNumber)
+		return false;
+
+	for (int i = 0; i < imgNumber; i++) {
+		Mat picL = imread(fileNameListL[i]);
+		Mat picR = imread(fileNameListR[i]);
+		if (picL.empty() || picR.empty())
+			return false;
+		Mat grayL, grayR;
+		cvtColor(picL, grayL, CV_BGR2GRAY);
+		cvtColor(picR, grayR, CV_BGR2GRAY);
+		vector<Point2f> cornerL, cornerR;
+		bool isFindL = findChessboardCorners(grayL, boardSize, cornerL);
+		bool isFindR = findChessboardCorners(grayR, boardSize, cornerR);
+		if (!(isFindL && isFindR))
+			return false;
+		cornerSubPix(grayL, cornerL, Size(5, 5), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 20, 0.1));
+		cornerSubPix(grayR, cornerR, Size(5, 5), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 20, 0.1));
+		cornersL.push_back(cornerL);
+		cornersR.push_back(cornerR);
+		//frameCount++;
+	}
+
+	//单目标定
+	calibrate();
+	//双目标定
+	double rms = calibrateStereo();
+	//重映射
+	rectify();
+	//计算映射矩阵
+	culRemap();
+	outPutCameraParam();
+	return true;
+}
+
