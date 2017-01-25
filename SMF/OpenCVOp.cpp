@@ -196,8 +196,9 @@ void OpenCVOp::culRemap()
 	isRectify = true;
 }
 
-bool OpenCVOp::loadCameraParam() {
-	FileStorage fs("CameraParams.yml", FileStorage::READ);
+bool OpenCVOp::loadCameraParam(string filename)
+{
+	FileStorage fs(filename, FileStorage::READ);
 	if (!fs.isOpened())
 		return false;
 

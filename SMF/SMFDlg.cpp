@@ -76,7 +76,7 @@ void CSMFDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BUTTON_CALIBRATE, m_bCalibrate);
 	DDX_Control(pDX, IDC_BUTTON_FROM_CAMERA, m_bFromCamera);
 	DDX_Control(pDX, IDC_BUTTON_FROM_PIC, m_bFromPic);
-	DDX_Control(pDX, IDC_BUTTON_FROM_VIDEO, m_bFromVideo);
+	DDX_Control(pDX, IDC_BUTTON_FROM_FILE, m_bFromFile);
 	DDX_Control(pDX, IDC_EDIT_NUM, m_eNum);
 	DDX_Control(pDX, IDC_BUTTON_CUT, m_bCut);
 }
@@ -86,10 +86,9 @@ BEGIN_MESSAGE_MAP(CSMFDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CSMFDlg::OnBnClickedButtonOpen)
-	ON_BN_CLICKED(IDC_BUTTON_CALIBRATE, &CSMFDlg::OnBnClickedButtonCalibrate)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_CAMERA, &CSMFDlg::OnBnClickedButtonFromCamera)
 	ON_BN_CLICKED(IDC_BUTTON_FROM_PIC, &CSMFDlg::OnBnClickedButtonFromPic)
-	ON_BN_CLICKED(IDC_BUTTON_FROM_VIDEO, &CSMFDlg::OnBnClickedButtonFromVideo)
+	ON_BN_CLICKED(IDC_BUTTON_FROM_FILE, &CSMFDlg::OnBnClickedButtonFromFile)
 	ON_BN_CLICKED(IDC_BUTTON_CUT, &CSMFDlg::OnBnClickedButtonCut)
 	ON_WM_LBUTTONDOWN()
 
@@ -241,21 +240,9 @@ void CSMFDlg::OnBnClickedButtonOpen()
 	// TODO: 在此添加控件通知处理程序代码
 	if (op.openCamera(getInt(IDC_COMBO_SELECT_L), getInt(IDC_COMBO_SELECT_R))) {
 		openingCamera = true;
-		m_bOpen.EnableWindow(false);
-		m_cSelectL.EnableWindow(false);
-		m_cSelectR.EnableWindow(false);
-
-		m_eGridH.EnableWindow(true);
-		m_eGridW.EnableWindow(true);
-		m_eReally.EnableWindow(true);
-		m_eNum.EnableWindow(true);
-		m_bFromCamera.EnableWindow(true);
-		m_bFromPic.EnableWindow(true);
+		lockCameraButton();
+		unlockCalibrateButton();
 		m_bar.SetPaneText(0, L"打开摄像头成功！");
-		if (op.loadCameraParam()) {
-			m_bar.SetPaneText(0, L"打开摄像头成功！已从文件中加载标定参数！");
-		}
-
 		SetTimer(ID_TIMER_LOOP_LRV, 10, NULL);
 
 	}
@@ -263,13 +250,6 @@ void CSMFDlg::OnBnClickedButtonOpen()
 		m_bar.SetPaneText(0, L"打开摄像头失败！");
 	}
 }
-
-
-void CSMFDlg::OnBnClickedButtonCalibrate()
-{
-	// TODO: 在此添加控件通知处理程序代码
-}
-
 
 void CSMFDlg::OnBnClickedButtonFromCamera()
 {
@@ -315,14 +295,38 @@ void CSMFDlg::OnBnClickedButtonFromPic()
 			fileNameListR.push_back(tmpstr);
 		}
 	}
+	if (op.calibrateFromPic(fileNameListL, fileNameListR)) {
+		m_bar.SetPaneText(0, L"图片标定成功！");
+		lockCalibrateButton();
+		return;
+	}
+	m_bar.SetPaneText(0, L"图片标定失败，请重试！");
 
-	return;
 }
 
 
-void CSMFDlg::OnBnClickedButtonFromVideo()
+void CSMFDlg::OnBnClickedButtonFromFile()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_FILEMUSTEXIST , NULL, this);
+
+	if (fileDlg.DoModal() == IDOK) {
+		POSITION pos;
+		pos = fileDlg.GetStartPosition();//开始遍历用户选择文件列表  
+		if (pos != NULL)
+		{
+			CString filename = fileDlg.GetNextPathName(pos);
+			USES_CONVERSION;
+			string tmpstr(W2A(filename));
+			if (op.loadCameraParam(tmpstr)) {
+				m_bar.SetPaneText(0, L"已从文件中加载标定参数！");
+				lockCalibrateButton();
+				return;
+			}
+		}
+	}
+	m_bar.SetPaneText(0, L"参数未加载成功，请重试！");
+
 }
 
 
@@ -400,3 +404,27 @@ void CSMFDlg::convertPoint(CPoint& p) {
 		p.y = -1;
 	}
 }
+
+void CSMFDlg::lockCameraButton() {
+	m_bOpen.EnableWindow(false);
+	m_cSelectL.EnableWindow(false);
+	m_cSelectR.EnableWindow(false);
+}
+
+void CSMFDlg::lockCalibrateButton() {
+	lockCalibrateButton(false);
+}
+
+void CSMFDlg::unlockCalibrateButton() {
+	lockCalibrateButton(true);
+}
+
+void CSMFDlg::lockCalibrateButton(boolean lock) {
+	m_eGridH.EnableWindow(lock);
+	m_eGridW.EnableWindow(lock);
+	m_eReally.EnableWindow(lock);
+	m_eNum.EnableWindow(lock);
+	m_bFromCamera.EnableWindow(lock);
+	m_bFromPic.EnableWindow(lock);
+}
+

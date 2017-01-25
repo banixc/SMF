@@ -46,7 +46,7 @@ protected:
 	CButton m_bCalibrate;
 	CButton m_bFromCamera;
 	CButton m_bFromPic;
-	CButton m_bFromVideo;
+	CButton m_bFromFile;
 	CStatusBar m_bar;
 
 	void initCombox();
@@ -59,10 +59,9 @@ protected:
 
 public:
 	afx_msg void OnBnClickedButtonOpen();
-	afx_msg void OnBnClickedButtonCalibrate();
 	afx_msg void OnBnClickedButtonFromCamera();
 	afx_msg void OnBnClickedButtonFromPic();
-	afx_msg void OnBnClickedButtonFromVideo();
+	afx_msg void OnBnClickedButtonFromFile();
 	afx_msg void OnBnClickedButtonCut();
 
 protected:
@@ -74,4 +73,8 @@ public:
 
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	void convertPoint(CPoint & p);
+	void lockCameraButton();
+	void lockCalibrateButton();
+	void lockCalibrateButton(boolean lock);
+	void unlockCalibrateButton();
 };

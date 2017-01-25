@@ -44,7 +44,7 @@ public:
 	double calibrateStereo();
 	void rectify();
 	void culRemap();
-	bool loadCameraParam();
+	bool loadCameraParam(string filename);
 	bool outPutCameraParam();
 	bool getPointClouds(cv::Mat & disparity, cv::Mat & pointClouds);
 	double getDistance(int x, int y);
