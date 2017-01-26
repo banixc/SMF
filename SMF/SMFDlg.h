@@ -6,9 +6,6 @@
 #include "afxwin.h"
 #include "OpenCVOp.h"
 
-#define TEXT_OPEN L"打开"
-#define TEXT_CLOSE L"关闭"
-#define TEXT_OPEN_FAILED L"打开摄像头失败，请检查你的设备！"
 // CSMFDlg 对话框
 class CSMFDlg : public CDialogEx
 {
@@ -29,7 +26,6 @@ public:
 protected:
 	HICON m_hIcon;
 	OpenCVOp op;
-	bool openingCamera = false;
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -43,19 +39,26 @@ protected:
 	CEdit m_eGridW;
 	CEdit m_eReally;
 	CButton m_bOpen;
-	CButton m_bCalibrate;
 	CButton m_bFromCamera;
 	CButton m_bFromPic;
 	CButton m_bFromFile;
 	CStatusBar m_bar;
+	CEdit m_eNum;
+	CButton m_bCut;
 
 	void initCombox();
 	void initStatusBar();
 	bool validParam();	
 	int getInt(int nID);
-
 	void showNextFrame();
+	void ShowMat(cv::Mat & image, int IDC);
 
+	void convertPoint(CPoint & p);
+	void lockCameraButton();
+	void lockCalibrateButton();
+	void lockCalibrateButton(boolean lock);
+	void lockParamsInput(boolean lock);
+	void unlockCalibrateButton();
 
 public:
 	afx_msg void OnBnClickedButtonOpen();
@@ -63,18 +66,8 @@ public:
 	afx_msg void OnBnClickedButtonFromPic();
 	afx_msg void OnBnClickedButtonFromFile();
 	afx_msg void OnBnClickedButtonCut();
-
-protected:
-	CEdit m_eNum;
-	CButton m_bCut;
-public:
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	void ShowMat(cv::Mat & image, int IDC);
-
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	void convertPoint(CPoint & p);
-	void lockCameraButton();
-	void lockCalibrateButton();
-	void lockCalibrateButton(boolean lock);
-	void unlockCalibrateButton();
+
+
 };

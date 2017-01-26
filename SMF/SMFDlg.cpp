@@ -73,7 +73,6 @@ void CSMFDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_GRID_W, m_eGridW);
 	DDX_Control(pDX, IDC_EDIT_REALLY, m_eReally);
 	DDX_Control(pDX, IDC_BUTTON_OPEN, m_bOpen);
-	DDX_Control(pDX, IDC_BUTTON_CALIBRATE, m_bCalibrate);
 	DDX_Control(pDX, IDC_BUTTON_FROM_CAMERA, m_bFromCamera);
 	DDX_Control(pDX, IDC_BUTTON_FROM_PIC, m_bFromPic);
 	DDX_Control(pDX, IDC_BUTTON_FROM_FILE, m_bFromFile);
@@ -239,7 +238,6 @@ void CSMFDlg::OnBnClickedButtonOpen()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	if (op.openCamera(getInt(IDC_COMBO_SELECT_L), getInt(IDC_COMBO_SELECT_R))) {
-		openingCamera = true;
 		lockCameraButton();
 		unlockCalibrateButton();
 		m_bar.SetPaneText(0, L"打开摄像头成功！");
@@ -254,19 +252,29 @@ void CSMFDlg::OnBnClickedButtonOpen()
 void CSMFDlg::OnBnClickedButtonFromCamera()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	if (!validParam())
+	if (!validParam()) {
 		m_bar.SetPaneText(0, L"参数不正确！");
-	else {
-		m_bar.SetPaneText(0, L"初始化完成！");
-		m_bFromCamera.EnableWindow(false);
-		m_bCut.EnableWindow(true);
+		return;
 	}
+
+	lockParamsInput(false);
+	m_bar.SetPaneText(0, L"初始化完成！");
+	m_bCut.EnableWindow(true);
+
 }
 
 
 void CSMFDlg::OnBnClickedButtonFromPic()
 {
 	// TODO: 在此添加控件通知处理程序代码
+
+	if (!validParam()) {
+		m_bar.SetPaneText(0, L"参数不正确！");
+		return;
+	}
+
+	lockParamsInput(false);
+
 	TCHAR szFilter[] = _T("图片|*.jpg|所有文件|*.*||");
 	vector<string> fileNameListL, fileNameListR;
 	CFileDialog fileDlgL(TRUE, NULL, NULL, OFN_FILEMUSTEXIST|OFN_ALLOWMULTISELECT, NULL, this);
@@ -420,11 +428,16 @@ void CSMFDlg::unlockCalibrateButton() {
 }
 
 void CSMFDlg::lockCalibrateButton(boolean lock) {
+	lockParamsInput(lock);
+	m_bFromCamera.EnableWindow(lock);
+	m_bFromPic.EnableWindow(lock);
+	m_bFromFile.EnableWindow(lock);
+}
+
+void CSMFDlg::lockParamsInput(boolean lock) {
 	m_eGridH.EnableWindow(lock);
 	m_eGridW.EnableWindow(lock);
 	m_eReally.EnableWindow(lock);
 	m_eNum.EnableWindow(lock);
-	m_bFromCamera.EnableWindow(lock);
-	m_bFromPic.EnableWindow(lock);
 }
 
